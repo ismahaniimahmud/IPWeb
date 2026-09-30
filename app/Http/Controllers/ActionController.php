@@ -32,6 +32,7 @@ class ActionController extends Controller
             })
             ->when($request->filled('status'), fn ($query) => $query->where('status', $request->string('status')))
             ->when($request->filled('priority'), fn ($query) => $query->where('priority', $request->string('priority')))
+            ->when($request->filled('theme'), fn ($query) => $query->where('theme', $request->string('theme')))
             ->when($request->string('deadline')->toString() === 'overdue', fn ($query) => $query
                 ->whereNot('status', 'Selesai')
                 ->whereDate('due_date', '<', now()->startOfDay()))

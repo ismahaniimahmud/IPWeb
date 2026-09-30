@@ -138,6 +138,98 @@ document.querySelectorAll('.topbar-meta > span').forEach((dateElement) => {
     }
 });
 
+const actionListUrl = document.querySelector('[data-action-list-url]')?.dataset.actionListUrl;
+
+const goToActionFilter = (filter, value) => {
+    if (!actionListUrl) {
+        return;
+    }
+
+    const url = new URL(actionListUrl, window.location.origin);
+    url.searchParams.set(filter, value);
+    window.location.assign(url);
+};
+
+document.querySelectorAll('[data-status-counts], [data-theme-counts]').forEach((donut) => {
+    const counts = JSON.parse(donut.dataset.statusCounts || donut.dataset.themeCounts);
+    const filters = Object.keys(counts);
+
+    const getDonutSegment = (event) => {
+        const bounds = donut.getBoundingClientRect();
+        const x = event.clientX - (bounds.left + bounds.width / 2);
+        const y = event.clientY - (bounds.top + bounds.height / 2);
+        const distance = Math.sqrt(x ** 2 + y ** 2);
+
+        if (distance < bounds.width * 0.32 || distance > bounds.width / 2) {
+            return null;
+        }
+
+        const angle = (Math.atan2(x, -y) * 180 / Math.PI + 360) % 360;
+        const total = filters.reduce((sum, filter) => sum + (counts[filter] || 0), 0);
+        let progress = 0;
+
+        for (const filter of filters) {
+            const segmentStart = progress;
+            progress += ((counts[filter] || 0) / Math.max(total, 1)) * 360;
+
+            if (angle < progress) {
+                return { filter, start: segmentStart, end: progress };
+            }
+        }
+
+        return null;
+    };
+
+    const filterByDonutPosition = (event) => {
+        const segment = getDonutSegment(event);
+
+        if (segment) {
+            goToActionFilter(donut.dataset.statusCounts ? 'status' : 'theme', segment.filter);
+        }
+    };
+
+    donut.addEventListener('mousemove', (event) => {
+        const segment = getDonutSegment(event);
+
+        if (!segment) {
+            donut.classList.remove('is-segment-hovered');
+            return;
+        }
+
+        donut.classList.add('is-segment-hovered');
+        donut.style.setProperty('--hover-start', `${segment.start}deg`);
+        donut.style.setProperty('--hover-end', `${segment.end}deg`);
+    });
+
+    donut.addEventListener('mouseleave', () => {
+        donut.classList.remove('is-segment-hovered');
+    });
+
+    donut.addEventListener('click', filterByDonutPosition);
+    donut.addEventListener('keydown', (event) => {
+        if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault();
+            const firstFilter = filters[0];
+
+            if (firstFilter) {
+                goToActionFilter(donut.dataset.statusCounts ? 'status' : 'theme', firstFilter);
+            }
+        }
+    });
+});
+
+document.querySelectorAll('[data-priority-filter]').forEach((barColumn) => {
+    const filterByPriority = () => goToActionFilter('priority', barColumn.dataset.priorityFilter);
+
+    barColumn.addEventListener('click', filterByPriority);
+    barColumn.addEventListener('keydown', (event) => {
+        if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault();
+            filterByPriority();
+        }
+    });
+});
+
 const dashboardRows = document.querySelectorAll('.dashboard-table tbody tr.is-clickable');
 
 if (dashboardRows.length) {
